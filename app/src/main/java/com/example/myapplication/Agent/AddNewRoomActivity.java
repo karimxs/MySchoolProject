@@ -30,6 +30,7 @@ import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
+import com.example.myapplication.Utils.DummyImageHelper;
 import com.google.firebase.storage.UploadTask;
 
 import java.text.SimpleDateFormat;
@@ -54,6 +55,16 @@ public class AddNewRoomActivity extends AppCompatActivity {
     private String currentuserid;
     private ProgressDialog loadingBar;
 
+
+    // New method to use dummy image instead of gallery
+    private void useDummyImage() {
+        // Get dummy image URI
+        Imageuri = DummyImageHelper.getDummyImageUri(this);
+        // Set the dummy image to the ImageView
+        DummyImageHelper.setDummyImage(roomimage);
+        Toast.makeText(this, "Dummy image selected", Toast.LENGTH_SHORT).show();
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -62,33 +73,34 @@ public class AddNewRoomActivity extends AppCompatActivity {
         mauth=FirebaseAuth.getInstance();
         currentuserid=mauth.getCurrentUser().getUid();
 
-     roomtype=getIntent().getExtras().get("Roomtype").toString();
+        roomtype=getIntent().getExtras().get("Roomtype").toString();
 
-     agentref= FirebaseDatabase.getInstance().getReference().child("Agents");
-     roomref=FirebaseDatabase.getInstance().getReference().child("Rooms");
-     RoomImageRef= FirebaseStorage.getInstance().getReference().child("Room Images");
+        agentref= FirebaseDatabase.getInstance().getReference().child("Agents");
+        roomref=FirebaseDatabase.getInstance().getReference().child("Rooms");
+        RoomImageRef= FirebaseStorage.getInstance().getReference().child("Room Images");
 
-     InitializaionFields();
+        InitializaionFields();
 
-     getCurrentAgentDetails();
+        getCurrentAgentDetails();
 
-     roomimage.setOnClickListener(new View.OnClickListener() {
-         @Override
-         public void onClick(View v) {
-             OpenGallery();
-         }
-     });
+        roomimage.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                // Instead of opening gallery, use dummy image
+                useDummyImage();
+            }
+        });
 
-     addRoomBtn.setOnClickListener(new View.OnClickListener() {
-         @Override
-         public void onClick(View v) {
-             loadingBar.setTitle("Add new Room");
-             loadingBar.setMessage("Please wait while we are adding new Room");
-             loadingBar.setCanceledOnTouchOutside(false);
-             loadingBar.show();
-             validateroomInfo();
-         }
-     });
+        addRoomBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                loadingBar.setTitle("Add new Room");
+                loadingBar.setMessage("Please wait while we are adding new Room");
+                loadingBar.setCanceledOnTouchOutside(false);
+                loadingBar.show();
+                validateroomInfo();
+            }
+        });
 
 
     }
@@ -124,8 +136,8 @@ public class AddNewRoomActivity extends AppCompatActivity {
     }
 
     private void sendUsertoAgentDetailsActivity() {
-            Intent intent=new Intent(this, HotelDetailsActivity.class);
-            startActivity(intent);
+        Intent intent=new Intent(this, HotelDetailsActivity.class);
+        startActivity(intent);
     }
 
     private void getCurrentAgentDetails() {
@@ -174,80 +186,123 @@ public class AddNewRoomActivity extends AppCompatActivity {
         }
     }
 
-    private void validateroomInfo() {
-        acornonac=acornonacET.getText().toString();
-        roomdiscription=roomdiscriptionET.getText().toString();
-        roomprice=roompriceET.getText().toString();
-        noofrooms=noofroomsET.getText().toString();
-        if(Imageuri==null){
-            Toast.makeText(this,"Room Image is Mandatory",Toast.LENGTH_SHORT).show();
-        }
-        else if(TextUtils.isEmpty(acornonac)){
-            Toast.makeText(this,"please enter room has ac or not",Toast.LENGTH_SHORT).show();
-        }
-        else if(TextUtils.isEmpty(roomdiscription)){
-            Toast.makeText(this,"please enter room description",Toast.LENGTH_SHORT).show();
-        }
-        else if(TextUtils.isEmpty(roomprice)){
-            Toast.makeText(this,"please enter room price",Toast.LENGTH_SHORT).show();
-        }
-        else if(TextUtils.isEmpty(noofrooms)){
-            Toast.makeText(this,"please enter no of rooms you want to add",Toast.LENGTH_SHORT).show();
-        }
-        else {
-            storeRoomInformation();
-        }
+//    private void validateroomInfo() {
+//        acornonac=acornonacET.getText().toString();
+//        roomdiscription=roomdiscriptionET.getText().toString();
+//        roomprice=roompriceET.getText().toString();
+//        noofrooms=noofroomsET.getText().toString();
+//        if(Imageuri==null){
+//            useDummyImage();
+//        }
+//        else if(TextUtils.isEmpty(acornonac)){
+//            Toast.makeText(this,"please enter room has ac or not",Toast.LENGTH_SHORT).show();
+//        }
+//        else if(TextUtils.isEmpty(roomdiscription)){
+//            Toast.makeText(this,"please enter room description",Toast.LENGTH_SHORT).show();
+//        }
+//        else if(TextUtils.isEmpty(roomprice)){
+//            Toast.makeText(this,"please enter room price",Toast.LENGTH_SHORT).show();
+//        }
+//        else if(TextUtils.isEmpty(noofrooms)){
+//            Toast.makeText(this,"please enter no of rooms you want to add",Toast.LENGTH_SHORT).show();
+//        }
+//        else {
+//            storeRoomInformation();
+//        }
+//    }
+private void validateroomInfo() {
+    acornonac=acornonacET.getText().toString();
+    roomdiscription=roomdiscriptionET.getText().toString();
+    roomprice=roompriceET.getText().toString();
+    noofrooms=noofroomsET.getText().toString();
+
+    // If no image is selected, use dummy image automatically
+    if(Imageuri==null){
+        useDummyImage();
     }
 
-    private void storeRoomInformation() {
-        Calendar calendar=Calendar.getInstance();
-        SimpleDateFormat currentDate=new SimpleDateFormat("MMM  dd, yyyy");
-        saveCurrentDate=currentDate.format(calendar.getTime());
-
-        SimpleDateFormat currentTime=new SimpleDateFormat("HH;mm;ss a");
-        saveCurrentTime=currentTime.format(calendar.getTime());
-        RoomRandomKey=saveCurrentDate+saveCurrentTime;
-
-        final StorageReference filePath=RoomImageRef.child(Imageuri.getLastPathSegment() + RoomRandomKey+".jpg");
-        final UploadTask uploadTask=filePath.putFile(Imageuri);
-        uploadTask.addOnFailureListener(new OnFailureListener() {
-            @Override
-            public void onFailure(@NonNull Exception e) {
-                String message=e.toString();
-                Toast.makeText(AddNewRoomActivity.this,"Error: "+message,Toast.LENGTH_SHORT).show();
-                loadingBar.dismiss();
-
-            }
-        }).addOnSuccessListener(new OnSuccessListener<UploadTask.TaskSnapshot>() {
-            @Override
-            public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
-                Toast.makeText(AddNewRoomActivity.this,"Room Image Uploaded Successfully",Toast.LENGTH_SHORT).show();
-                Task<Uri> uriTask=uploadTask.continueWithTask(new Continuation<UploadTask.TaskSnapshot, Task<Uri>>() {
-                    @Override
-                    public Task<Uri> then(@NonNull Task<UploadTask.TaskSnapshot> task) throws Exception {
-                        if(!task.isSuccessful()){
-                            throw task.getException();
-                        }
-                        downloadimgurl=filePath.getDownloadUrl().toString();
-                        return filePath.getDownloadUrl();
-                    }
-                }).addOnCompleteListener(new OnCompleteListener<Uri>() {
-                    @Override
-                    public void onComplete(@NonNull Task<Uri> task) {
-                        if(task.isSuccessful()){
-                            downloadimgurl=task.getResult().toString();
-                            Toast.makeText(AddNewRoomActivity.this,"got room image url Successfully",Toast.LENGTH_SHORT).show();
-                            saveRoominfotodatabase();
-
-                        }
-                    }
-                });
-
-            }
-        });
+    if(TextUtils.isEmpty(acornonac)){
+        Toast.makeText(this,"please enter room has ac or not",Toast.LENGTH_SHORT).show();
+        loadingBar.dismiss(); // Dismiss loading bar on error
     }
+    else if(TextUtils.isEmpty(roomdiscription)){
+        Toast.makeText(this,"please enter room description",Toast.LENGTH_SHORT).show();
+        loadingBar.dismiss(); // Dismiss loading bar on error
+    }
+    // ... other validation checks with loadingBar.dismiss() ...
+    else {
+        storeRoomInformation();
+    }
+}
 
-    private void saveRoominfotodatabase() {
+
+
+    //    private void storeRoomInformation() {
+//        Calendar calendar=Calendar.getInstance();
+//        SimpleDateFormat currentDate=new SimpleDateFormat("MMM  dd, yyyy");
+//        saveCurrentDate=currentDate.format(calendar.getTime());
+//
+//        SimpleDateFormat currentTime=new SimpleDateFormat("HH;mm;ss a");
+//        saveCurrentTime=currentTime.format(calendar.getTime());
+//        RoomRandomKey=saveCurrentDate+saveCurrentTime;
+//
+//        final StorageReference filePath=RoomImageRef.child(Imageuri.getLastPathSegment() + RoomRandomKey+".jpg");
+//        final UploadTask uploadTask=filePath.putFile(Imageuri);
+//        uploadTask.addOnFailureListener(new OnFailureListener() {
+//            @Override
+//            public void onFailure(@NonNull Exception e) {
+//                String message=e.toString();
+//                Toast.makeText(AddNewRoomActivity.this,"Error: "+message,Toast.LENGTH_SHORT).show();
+//                loadingBar.dismiss();
+//
+//            }
+//        }).addOnSuccessListener(new OnSuccessListener<UploadTask.TaskSnapshot>() {
+//            @Override
+//            public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
+//                Toast.makeText(AddNewRoomActivity.this,"Room Image Uploaded Successfully",Toast.LENGTH_SHORT).show();
+//                Task<Uri> uriTask=uploadTask.continueWithTask(new Continuation<UploadTask.TaskSnapshot, Task<Uri>>() {
+//                    @Override
+//                    public Task<Uri> then(@NonNull Task<UploadTask.TaskSnapshot> task) throws Exception {
+//                        if(!task.isSuccessful()){
+//                            throw task.getException();
+//                        }
+//                        downloadimgurl=filePath.getDownloadUrl().toString();
+//                        return filePath.getDownloadUrl();
+//                    }
+//                }).addOnCompleteListener(new OnCompleteListener<Uri>() {
+//                    @Override
+//                    public void onComplete(@NonNull Task<Uri> task) {
+//                        if(task.isSuccessful()){
+//                            downloadimgurl=task.getResult().toString();
+//                            Toast.makeText(AddNewRoomActivity.this,"got room image url Successfully",Toast.LENGTH_SHORT).show();
+//                            saveRoominfotodatabase();
+//
+//                        }
+//                    }
+//                });
+//
+//            }
+//        });
+//    }
+private void storeRoomInformation() {
+    Calendar calendar=Calendar.getInstance();
+    SimpleDateFormat currentDate=new SimpleDateFormat("MMM  dd, yyyy");
+    saveCurrentDate=currentDate.format(calendar.getTime());
+
+    SimpleDateFormat currentTime=new SimpleDateFormat("HH;mm;ss a");
+    saveCurrentTime=currentTime.format(calendar.getTime());
+    RoomRandomKey=saveCurrentDate+saveCurrentTime;
+
+    // Skip Firebase Storage upload and use dummy URL directly
+    downloadimgurl = DummyImageHelper.getDummyDownloadUrl();
+    Toast.makeText(AddNewRoomActivity.this, "Using dummy image URL", Toast.LENGTH_SHORT).show();
+
+    // Proceed directly to saving room info to database
+    saveRoominfotodatabase();
+}
+
+
+    private void  saveRoominfotodatabase() {
         HashMap<String,Object> roomMap=new HashMap<>();
         roomMap.put("roomrandomkey",RoomRandomKey);
         roomMap.put("acornonac",acornonac);

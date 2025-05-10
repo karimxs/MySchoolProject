@@ -71,6 +71,7 @@ public class EmailSignUpactivity extends AppCompatActivity {
         startActivity(intent);
     }
     private void sendUserToUserHomeActivity() {
+
         Intent intent=new Intent(this, UserHomeActivity.class);
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_CLEAR_TASK);
         startActivity(intent);

@@ -17,6 +17,7 @@ import android.widget.ImageView;
 import android.widget.Toast;
 
 import com.example.myapplication.R;
+import com.example.myapplication.Utils.DummyImageHelper;
 import com.google.android.gms.tasks.Continuation;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnFailureListener;
@@ -69,7 +70,8 @@ public class HotelDetailsActivity extends AppCompatActivity {
         hotelImage.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                OpenGallery();
+                // Instead of opening gallery, use dummy image
+                useDummyImage();
             }
         });
         updatedetailsbtn.setOnClickListener(new View.OnClickListener() {
@@ -80,6 +82,14 @@ public class HotelDetailsActivity extends AppCompatActivity {
         });
     }
 
+    // New method to use dummy image instead of gallery
+    private void useDummyImage() {
+        // Get dummy image URI
+        Imageuri = DummyImageHelper.getDummyImageUri(this);
+        // Set the dummy image to the ImageView
+        DummyImageHelper.setDummyImage(hotelImage);
+        Toast.makeText(this, "Dummy image selected", Toast.LENGTH_SHORT).show();
+    }
 
     private void InitializaionFields() {
         hotelfacility1ET = findViewById(R.id.hotel_facility1);
@@ -102,7 +112,6 @@ public class HotelDetailsActivity extends AppCompatActivity {
                     hoteldescriptionET.setText(dataSnapshot.child("hoteldescription").getValue().toString());
                     Picasso.get().load(dataSnapshot.child("hotelimage").getValue().toString()).into(hotelImage);
                 }
-
             }
 
             @Override
@@ -112,6 +121,7 @@ public class HotelDetailsActivity extends AppCompatActivity {
         });
     }
 
+    // Keep this method for compatibility, but it won't be used
     private void OpenGallery() {
         Intent gallaryintent = new Intent();
         gallaryintent.setAction(Intent.ACTION_GET_CONTENT);
@@ -133,10 +143,13 @@ public class HotelDetailsActivity extends AppCompatActivity {
         hotelfacility2 = hotelfacility2ET.getText().toString();
         hotelfacility3 = hotelfacility3ET.getText().toString();
         hoteldescription = hoteldescriptionET.getText().toString();
+
+        // If no image is selected, use dummy image automatically
         if (Imageuri == null) {
-            Toast.makeText(this, "Hotel Image is Mandatory", Toast.LENGTH_SHORT).show();
+            useDummyImage();
         }
-        else if (TextUtils.isEmpty(hotelfacility1)) {
+
+        if (TextUtils.isEmpty(hotelfacility1)) {
             Toast.makeText(this, "please enter hotel facility1", Toast.LENGTH_SHORT).show();
         } else if (TextUtils.isEmpty(hotelfacility2)) {
             Toast.makeText(this, "please enter hotel facility2", Toast.LENGTH_SHORT).show();
@@ -144,7 +157,7 @@ public class HotelDetailsActivity extends AppCompatActivity {
             Toast.makeText(this, "please enter hotel facility3", Toast.LENGTH_SHORT).show();
         } else if (TextUtils.isEmpty(hoteldescription)) {
             Toast.makeText(this, "please enter hotel description", Toast.LENGTH_SHORT).show();
-        }else {
+        } else {
             loadingBar.setTitle("Adding Hotel Info");
             loadingBar.setMessage("Please wait while we are updating Hotel information");
             loadingBar.setCanceledOnTouchOutside(false);
@@ -162,53 +175,22 @@ public class HotelDetailsActivity extends AppCompatActivity {
         saveCurrentTime = currentTime.format(calendar.getTime());
         HotelRandomKey = saveCurrentDate + saveCurrentTime;
 
-        final StorageReference filePath = HotelImageRef.child(Imageuri.getLastPathSegment() + HotelRandomKey + ".jpg");
-        final UploadTask uploadTask = filePath.putFile(Imageuri);
-        uploadTask.addOnFailureListener(new OnFailureListener() {
-            @Override
-            public void onFailure(@NonNull Exception e) {
-                String message = e.toString();
-                Toast.makeText(HotelDetailsActivity.this, "Error: " + message, Toast.LENGTH_SHORT).show();
-                loadingBar.dismiss();
+        // Skip Firebase Storage upload and use dummy URL directly
+        downloadimgurl = DummyImageHelper.getDummyDownloadUrl();
+        Toast.makeText(HotelDetailsActivity.this, "Using dummy image URL", Toast.LENGTH_SHORT).show();
 
-            }
-        }).addOnSuccessListener(new OnSuccessListener<UploadTask.TaskSnapshot>() {
-            @Override
-            public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
-                Toast.makeText(HotelDetailsActivity.this, "Hotel Image Uploaded Successfully", Toast.LENGTH_SHORT).show();
-                Task<Uri> uriTask = uploadTask.continueWithTask(new Continuation<UploadTask.TaskSnapshot, Task<Uri>>() {
-                    @Override
-                    public Task<Uri> then(@NonNull Task<UploadTask.TaskSnapshot> task) throws Exception {
-                        if (!task.isSuccessful()) {
-                            throw task.getException();
-                        }
-                        downloadimgurl = filePath.getDownloadUrl().toString();
-                        return filePath.getDownloadUrl();
-                    }
-                }).addOnCompleteListener(new OnCompleteListener<Uri>() {
-                    @Override
-                    public void onComplete(@NonNull Task<Uri> task) {
-                        if (task.isSuccessful()) {
-                            downloadimgurl = task.getResult().toString();
-                            Toast.makeText(HotelDetailsActivity.this, "got room image url Successfully", Toast.LENGTH_SHORT).show();
-                            saveHotelinfotodatabase();
-
-                        }
-                    }
-                });
-
-            }
-        });
+        // Proceed directly to saving hotel info to database
+        saveHotelinfotodatabase();
     }
 
     private void saveHotelinfotodatabase() {
-
         final HashMap<String, Object> agentMap = new HashMap<>();
         agentMap.put("hotelfacility1", hotelfacility1);
         agentMap.put("hotelfacility2", hotelfacility2);
         agentMap.put("hotelfacility3", hotelfacility3);
         agentMap.put("hoteldescription", hoteldescription);
         agentMap.put("hotelimage", downloadimgurl);
+
         agentref.child(currentuserid).updateChildren(agentMap)
                 .addOnCompleteListener(new OnCompleteListener<Void>() {
                     @Override
@@ -223,9 +205,7 @@ public class HotelDetailsActivity extends AppCompatActivity {
                             String message = task.getException().toString();
                             Toast.makeText(HotelDetailsActivity.this, "Error" + message, Toast.LENGTH_SHORT).show();
                         }
-
                     }
                 });
     }
-
 }

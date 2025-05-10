@@ -19,6 +19,7 @@ import android.widget.Toast;
 import com.example.myapplication.R;
 import com.example.myapplication.Users.UserHomeActivity;
 import com.example.myapplication.Users.UserProfileActivity;
+import com.example.myapplication.Utils.DummyImageHelper;
 import com.google.android.gms.tasks.Continuation;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnFailureListener;
@@ -68,7 +69,8 @@ public class AdminProfileActivity extends AppCompatActivity {
         adminprofileimg.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                OpenGallery();
+                // Instead of opening gallery, use dummy image
+                useDummyImage();
                 checker="checked";
             }
         });
@@ -84,6 +86,16 @@ public class AdminProfileActivity extends AppCompatActivity {
             }
         });
     }
+
+    // New method to use dummy image instead of gallery
+    private void useDummyImage() {
+        // Get dummy image URI
+        Imageuri = DummyImageHelper.getDummyImageUri(this);
+        // Set the dummy image to the ImageView
+        DummyImageHelper.setDummyImage(adminprofileimg);
+        Toast.makeText(this, "Dummy image selected", Toast.LENGTH_SHORT).show();
+    }
+
     private void InitializationFields() {
         adminnameTV=findViewById(R.id.admin_name);
         adminphoneET=findViewById(R.id.admin_phone_no);
@@ -172,8 +184,7 @@ public class AdminProfileActivity extends AppCompatActivity {
         }
     }
 
-
-
+    // Keep this method for compatibility, but it won't be used
     private void OpenGallery(){
         Intent gallaryintent=new Intent();
         gallaryintent.setAction(Intent.ACTION_GET_CONTENT);
@@ -197,6 +208,12 @@ public class AdminProfileActivity extends AppCompatActivity {
         adminaddress=adminaddressET.getText().toString();
         admincity=adminCityET.getText().toString();
         adminidcard=adminidcardET.getText().toString();
+
+        // If no image is selected, use dummy image automatically
+        if(Imageuri==null){
+            useDummyImage();
+        }
+
         if(TextUtils.isEmpty(adminphone)){
             adminphoneET.setError("enter phone no");
         }
@@ -220,87 +237,45 @@ public class AdminProfileActivity extends AppCompatActivity {
         }
     }
 
-
-
-
     private void uploadImage() {
         progressDialog.setTitle("Update Profile");
         progressDialog.setMessage("Please wait while we are updating your info");
         progressDialog.setCanceledOnTouchOutside(false);
         progressDialog.show();
-        if(Imageuri!=null){
-            Calendar calendar=Calendar.getInstance();
-            SimpleDateFormat currentDate=new SimpleDateFormat("MMM  dd, yyyy");
-            saveCurrentDate=currentDate.format(calendar.getTime());
 
-            SimpleDateFormat currentTime=new SimpleDateFormat("HH;mm;ss a");
-            saveCurrentTime=currentTime.format(calendar.getTime());
-            AdminRandomKey=saveCurrentDate+saveCurrentTime;
+        // Skip Firebase Storage upload and use dummy URL directly
+        Calendar calendar=Calendar.getInstance();
+        SimpleDateFormat currentDate=new SimpleDateFormat("MMM  dd, yyyy");
+        saveCurrentDate=currentDate.format(calendar.getTime());
 
-            final StorageReference filePath=AdminImageRef.child(Imageuri.getLastPathSegment() + AdminRandomKey+".jpg");
-            final UploadTask uploadTask=filePath.putFile(Imageuri);
-            uploadTask.addOnFailureListener(new OnFailureListener() {
-                @Override
-                public void onFailure(@NonNull Exception e) {
-                    String message=e.toString();
-                    Toast.makeText(AdminProfileActivity.this,"Error: "+message,Toast.LENGTH_SHORT).show();
+        SimpleDateFormat currentTime=new SimpleDateFormat("HH;mm;ss a");
+        saveCurrentTime=currentTime.format(calendar.getTime());
+        AdminRandomKey=saveCurrentDate+saveCurrentTime;
+
+        // Use dummy URL instead of uploading to Firebase
+        downloadimgurl = DummyImageHelper.getDummyDownloadUrl();
+        Toast.makeText(AdminProfileActivity.this, "Using dummy image URL", Toast.LENGTH_SHORT).show();
+
+        // Update admin info with dummy image URL
+        HashMap<String,Object> userMap=new HashMap<>();
+        userMap.put("email",adminemail);
+        userMap.put("phone",adminphone);
+        userMap.put("idcard",adminidcard);
+        userMap.put("city",admincity);
+        userMap.put("birthday",birthday);
+        userMap.put("address",adminaddress);
+        userMap.put("adminimage",downloadimgurl);
+
+        adminref.updateChildren(userMap).addOnCompleteListener(new OnCompleteListener<Void>() {
+            @Override
+            public void onComplete(@NonNull Task<Void> task) {
+                if(task.isSuccessful()){
                     progressDialog.dismiss();
-
+                    Toast.makeText(AdminProfileActivity.this,"Update successful",Toast.LENGTH_SHORT).show();
+                    sendUserToAdminHomeActivity();
                 }
-            }).addOnSuccessListener(new OnSuccessListener<UploadTask.TaskSnapshot>() {
-                @Override
-                public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
-                    Toast.makeText(AdminProfileActivity.this,"Admin Image Uploaded Successfully",Toast.LENGTH_SHORT).show();
-                    Task<Uri> uriTask=uploadTask.continueWithTask(new Continuation<UploadTask.TaskSnapshot, Task<Uri>>() {
-                        @Override
-                        public Task<Uri> then(@NonNull Task<UploadTask.TaskSnapshot> task) throws Exception {
-                            if(!task.isSuccessful()){
-                                throw task.getException();
-                            }
-                            downloadimgurl=filePath.getDownloadUrl().toString();
-                            return filePath.getDownloadUrl();
-                        }
-                    }).addOnCompleteListener(new OnCompleteListener<Uri>() {
-                        @Override
-                        public void onComplete(@NonNull Task<Uri> task) {
-                            if(task.isSuccessful()){
-                                downloadimgurl=task.getResult().toString();
-                                if(task.isSuccessful()){
-                                    downloadimgurl=task.getResult().toString();
-                                    Toast.makeText(AdminProfileActivity.this,"got admin image url Successfully",Toast.LENGTH_SHORT).show();
-                                    HashMap<String,Object> userMap=new HashMap<>();
-                                    userMap.put("email",adminemail);
-                                    userMap.put("phone",adminphone);
-                                    userMap.put("idcard",adminidcard);
-                                    userMap.put("city",admincity);
-                                    userMap.put("birthday",birthday);
-                                    userMap.put("address",adminaddress);
-                                    userMap.put("adminimage",downloadimgurl);
-                                    adminref.updateChildren(userMap).addOnCompleteListener(new OnCompleteListener<Void>() {
-                                        @Override
-                                        public void onComplete(@NonNull Task<Void> task) {
-                                            if(task.isSuccessful()){
-                                                progressDialog.dismiss();
-                                                Toast.makeText(AdminProfileActivity.this,"Update successful",Toast.LENGTH_SHORT).show();
-                                                sendUserToAdminHomeActivity();
-                                            }
-                                        }
-                                    });
-                                }
-
-                            }
-                        }
-                    });
-
-                }
-            });
-
-        }
-        else {
-            Toast.makeText(AdminProfileActivity.this,"Image is not selected",Toast.LENGTH_SHORT).show();
-            progressDialog.dismiss();
-        }
-
+            }
+        });
     }
 
     private void sendUserToAdminHomeActivity() {

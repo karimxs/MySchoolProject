@@ -18,6 +18,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.example.myapplication.R;
+import com.example.myapplication.Utils.DummyImageHelper;
 import com.google.android.gms.tasks.Continuation;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnFailureListener;
@@ -69,7 +70,8 @@ public class AgentProfileActivity extends AppCompatActivity {
         agentprofileimg.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                OpenGallery();
+                // Instead of opening gallery, use dummy image
+                useDummyImage();
             }
         });
         updatebtn.setOnClickListener(new View.OnClickListener() {
@@ -78,6 +80,15 @@ public class AgentProfileActivity extends AppCompatActivity {
                 validateAgentInfo();
             }
         });
+    }
+
+    // New method to use dummy image instead of gallery
+    private void useDummyImage() {
+        // Get dummy image URI
+        Imageuri = DummyImageHelper.getDummyImageUri(this);
+        // Set the dummy image to the ImageView
+        DummyImageHelper.setDummyImage(agentprofileimg);
+        Toast.makeText(this, "Dummy image selected", Toast.LENGTH_SHORT).show();
     }
 
     private void InitializationFields() {
@@ -126,6 +137,7 @@ public class AgentProfileActivity extends AppCompatActivity {
         });
     }
 
+    // Keep this method for compatibility, but it won't be used
     private void OpenGallery(){
         Intent gallaryintent=new Intent();
         gallaryintent.setAction(Intent.ACTION_GET_CONTENT);
@@ -150,9 +162,12 @@ public class AgentProfileActivity extends AppCompatActivity {
         hotelCity = hotelCityET.getText().toString();
         hotelrating = hotelratingET.getText().toString();
 
+        // If no image is selected, use dummy image automatically
         if (Imageuri == null) {
-            Toast.makeText(this, "Agent Image is Mandatory", Toast.LENGTH_SHORT).show();
-        } else if (TextUtils.isEmpty(agentPhoneno)) {
+            useDummyImage();
+        }
+
+        if (TextUtils.isEmpty(agentPhoneno)) {
             Toast.makeText(this, "please enter agent Phoneno", Toast.LENGTH_SHORT).show();
         } else if (TextUtils.isEmpty(agentemail)) {
             Toast.makeText(this, "please enter agent email", Toast.LENGTH_SHORT).show();
@@ -182,43 +197,12 @@ public class AgentProfileActivity extends AppCompatActivity {
         saveCurrentTime = currentTime.format(calendar.getTime());
         AgentRandomKey = saveCurrentDate + saveCurrentTime;
 
-        final StorageReference filePath = AgentImageRef.child(Imageuri.getLastPathSegment() + AgentRandomKey + ".jpg");
-        final UploadTask uploadTask = filePath.putFile(Imageuri);
-        uploadTask.addOnFailureListener(new OnFailureListener() {
-            @Override
-            public void onFailure(@NonNull Exception e) {
-                String message = e.toString();
-                Toast.makeText(AgentProfileActivity.this, "Error: " + message, Toast.LENGTH_SHORT).show();
-                loadingBar.dismiss();
+        // Skip Firebase Storage upload and use dummy URL directly
+        downloadimgurl = DummyImageHelper.getDummyDownloadUrl();
+        Toast.makeText(AgentProfileActivity.this, "Using dummy image URL", Toast.LENGTH_SHORT).show();
 
-            }
-        }).addOnSuccessListener(new OnSuccessListener<UploadTask.TaskSnapshot>() {
-            @Override
-            public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
-                Toast.makeText(AgentProfileActivity.this, "Agent Image Uploaded Successfully", Toast.LENGTH_SHORT).show();
-                Task<Uri> uriTask = uploadTask.continueWithTask(new Continuation<UploadTask.TaskSnapshot, Task<Uri>>() {
-                    @Override
-                    public Task<Uri> then(@NonNull Task<UploadTask.TaskSnapshot> task) throws Exception {
-                        if (!task.isSuccessful()) {
-                            throw task.getException();
-                        }
-                        downloadimgurl = filePath.getDownloadUrl().toString();
-                        return filePath.getDownloadUrl();
-                    }
-                }).addOnCompleteListener(new OnCompleteListener<Uri>() {
-                    @Override
-                    public void onComplete(@NonNull Task<Uri> task) {
-                        if (task.isSuccessful()) {
-                            downloadimgurl = task.getResult().toString();
-                            Toast.makeText(AgentProfileActivity.this, "got agent image url Successfully", Toast.LENGTH_SHORT).show();
-                            saveagentinfotodatabase();
-
-                        }
-                    }
-                });
-
-            }
-        });
+        // Proceed directly to saving agent info to database
+        saveagentinfotodatabase();
     }
 
     private void saveagentinfotodatabase() {
@@ -246,13 +230,7 @@ public class AgentProfileActivity extends AppCompatActivity {
                     String message = task.getException().toString();
                     Toast.makeText(AgentProfileActivity.this, "Error" + message, Toast.LENGTH_SHORT).show();
                 }
-
             }
         });
-
     }
-
-
-
-
 }

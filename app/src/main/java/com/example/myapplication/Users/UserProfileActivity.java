@@ -19,6 +19,7 @@ import android.widget.Toast;
 import com.example.myapplication.Agent.AgentEditRoomActivity;
 import com.example.myapplication.Agent.AgentHomeActivity;
 import com.example.myapplication.R;
+import com.example.myapplication.Utils.DummyImageHelper;
 import com.google.android.gms.tasks.Continuation;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnFailureListener;
@@ -70,7 +71,8 @@ public class UserProfileActivity extends AppCompatActivity {
         userprofileimg.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                OpenGallery();
+                // Instead of opening gallery, use dummy image
+                useDummyImage();
                 checker="checked";
             }
         });
@@ -87,7 +89,14 @@ public class UserProfileActivity extends AppCompatActivity {
         });
     }
 
-
+    // New method to use dummy image instead of gallery
+    private void useDummyImage() {
+        // Get dummy image URI
+        Imageuri = DummyImageHelper.getDummyImageUri(this);
+        // Set the dummy image to the ImageView
+        DummyImageHelper.setDummyImage(userprofileimg);
+        Toast.makeText(this, "Dummy image selected", Toast.LENGTH_SHORT).show();
+    }
 
     private void InitializationFields() {
         usernameTV=findViewById(R.id.user_name);
@@ -177,8 +186,7 @@ public class UserProfileActivity extends AppCompatActivity {
         }
     }
 
-
-
+    // Keep this method for compatibility, but it won't be used
     private void OpenGallery(){
         Intent gallaryintent=new Intent();
         gallaryintent.setAction(Intent.ACTION_GET_CONTENT);
@@ -202,6 +210,12 @@ public class UserProfileActivity extends AppCompatActivity {
         useraddress=useraddressET.getText().toString();
         usercity=userCityET.getText().toString();
         useridcard=useridcardET.getText().toString();
+
+        // If no image is selected, use dummy image automatically
+        if(Imageuri==null){
+            useDummyImage();
+        }
+
         if(TextUtils.isEmpty(userphone)){
             userphoneET.setError("enter phone no");
         }
@@ -223,97 +237,51 @@ public class UserProfileActivity extends AppCompatActivity {
         else {
             uploadImage();
         }
-        }
+    }
 
-
-
-
-        private void uploadImage() {
+    private void uploadImage() {
         progressDialog.setTitle("Update Profile");
         progressDialog.setMessage("Please wait while we are updating your info");
         progressDialog.setCanceledOnTouchOutside(false);
         progressDialog.show();
-        if(Imageuri!=null){
-            Calendar calendar=Calendar.getInstance();
-            SimpleDateFormat currentDate=new SimpleDateFormat("MMM  dd, yyyy");
-            saveCurrentDate=currentDate.format(calendar.getTime());
 
-            SimpleDateFormat currentTime=new SimpleDateFormat("HH;mm;ss a");
-            saveCurrentTime=currentTime.format(calendar.getTime());
-            UserRandomKey=saveCurrentDate+saveCurrentTime;
+        // Skip Firebase Storage upload and use dummy URL directly
+        Calendar calendar=Calendar.getInstance();
+        SimpleDateFormat currentDate=new SimpleDateFormat("MMM  dd, yyyy");
+        saveCurrentDate=currentDate.format(calendar.getTime());
 
-            final StorageReference filePath=UserImageRef.child(Imageuri.getLastPathSegment() + UserRandomKey+".jpg");
-            final UploadTask uploadTask=filePath.putFile(Imageuri);
-            uploadTask.addOnFailureListener(new OnFailureListener() {
-                @Override
-                public void onFailure(@NonNull Exception e) {
-                    String message=e.toString();
-                    Toast.makeText(UserProfileActivity.this,"Error: "+message,Toast.LENGTH_SHORT).show();
+        SimpleDateFormat currentTime=new SimpleDateFormat("HH;mm;ss a");
+        saveCurrentTime=currentTime.format(calendar.getTime());
+        UserRandomKey=saveCurrentDate+saveCurrentTime;
+
+        // Use dummy URL instead of uploading to Firebase
+        downloadimgurl = DummyImageHelper.getDummyDownloadUrl();
+        Toast.makeText(UserProfileActivity.this, "Using dummy image URL", Toast.LENGTH_SHORT).show();
+
+        // Update user info with dummy image URL
+        HashMap<String,Object> userMap=new HashMap<>();
+        userMap.put("email",useremail);
+        userMap.put("phone",userphone);
+        userMap.put("idcard",useridcard);
+        userMap.put("city",usercity);
+        userMap.put("birthday",birthday);
+        userMap.put("address",useraddress);
+        userMap.put("userimage",downloadimgurl);
+
+        userref.child(currentuserid).updateChildren(userMap).addOnCompleteListener(new OnCompleteListener<Void>() {
+            @Override
+            public void onComplete(@NonNull Task<Void> task) {
+                if(task.isSuccessful()){
                     progressDialog.dismiss();
-
+                    Toast.makeText(UserProfileActivity.this,"Update successful",Toast.LENGTH_SHORT).show();
+                    sendUserToUserHomeActivity();
                 }
-            }).addOnSuccessListener(new OnSuccessListener<UploadTask.TaskSnapshot>() {
-                @Override
-                public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
-                    Toast.makeText(UserProfileActivity.this,"User Image Uploaded Successfully",Toast.LENGTH_SHORT).show();
-                    Task<Uri> uriTask=uploadTask.continueWithTask(new Continuation<UploadTask.TaskSnapshot, Task<Uri>>() {
-                        @Override
-                        public Task<Uri> then(@NonNull Task<UploadTask.TaskSnapshot> task) throws Exception {
-                            if(!task.isSuccessful()){
-                                throw task.getException();
-                            }
-                            downloadimgurl=filePath.getDownloadUrl().toString();
-                            return filePath.getDownloadUrl();
-                        }
-                    }).addOnCompleteListener(new OnCompleteListener<Uri>() {
-                        @Override
-                        public void onComplete(@NonNull Task<Uri> task) {
-                            if(task.isSuccessful()){
-                                downloadimgurl=task.getResult().toString();
-                                if(task.isSuccessful()){
-                                    downloadimgurl=task.getResult().toString();
-                                    Toast.makeText(UserProfileActivity.this,"got user image url Successfully",Toast.LENGTH_SHORT).show();
-                                    HashMap<String,Object> userMap=new HashMap<>();
-                                    userMap.put("email",useremail);
-                                    userMap.put("phone",userphone);
-                                    userMap.put("idcard",useridcard);
-                                    userMap.put("city",usercity);
-                                    userMap.put("birthday",birthday);
-                                    userMap.put("address",useraddress);
-                                    userMap.put("userimage",downloadimgurl);
-                                    userref.child(currentuserid).updateChildren(userMap).addOnCompleteListener(new OnCompleteListener<Void>() {
-                                        @Override
-                                        public void onComplete(@NonNull Task<Void> task) {
-                                            if(task.isSuccessful()){
-                                                progressDialog.dismiss();
-                                                Toast.makeText(UserProfileActivity.this,"Update successful",Toast.LENGTH_SHORT).show();
-                                                  sendUserToUserHomeActivity();
-                                            }
-                                        }
-                                    });
-                                }
-
-                            }
-                        }
-                    });
-
-                }
-            });
-
-        }
-        else {
-            Toast.makeText(UserProfileActivity.this,"Image is not selected",Toast.LENGTH_SHORT).show();
-            progressDialog.dismiss();
-        }
-
+            }
+        });
     }
 
     private void sendUserToUserHomeActivity() {
         Intent intent=new Intent(this, UserHomeActivity.class);
         startActivity(intent);
     }
-
-
 }
-
-
